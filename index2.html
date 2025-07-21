@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>House Style Selector</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="custom.css">
+ 
+  <script src="https://static.matterport.com/showcase-sdk/latest.js"></script>
+<script>
+  function loadMatterportWithSDK(modelId) {
+    const sdkDiv = document.getElementById('mp-sdk-container');
+    sdkDiv.innerHTML = "";
+
+    const iframe = document.createElement("iframe");
+    iframe.src = `https://my.matterport.com/showcase?m=${modelId}&play=1`;
+    iframe.allow = "xr-spatial-tracking";
+    iframe.allowFullscreen = true;
+    iframe.style = "width:100%;height:100%;border:none;";
+    sdkDiv.appendChild(iframe);
+
+    iframe.onload = () => {
+      window.MP_SDK.connect(iframe, modelId, "INSERT_YOUR_ACTUAL_SDK_KEY_HERE")
+        .then(sdk => {
+          console.log("SDK Connected", sdk);
+          // Add interactive features here
+          window.sdkInstance = sdk;
+
+          const viewSelect = document.createElement("select");
+          viewSelect.className = "p-10 f-15 m-10 r-10";
+          viewSelect.innerHTML = `
+            <option value="">📍 Select a Room View</option>
+            <option value="kitchen">Kitchen</option>
+            <option value="living">Living Room</option>
+            <option value="entry">Entrance</option>
+          `;
+          viewSelect.onchange = (e) => {
+            const val = e.target.value;
+            const views = {
+              kitchen: { position: { x: 2, y: 1.5, z: -2 }, lookAt: { x: 2, y: 1.5, z: -1 } },
+              living: { position: { x: 0, y: 1.5, z: 0 }, lookAt: { x: 0, y: 1.5, z: 1 } },
+              entry:  { position: { x: -1, y: 1.5, z: 2 }, lookAt: { x: -1, y: 1.5, z: 1 } }
+            };
+            if (views[val]) {
+              sdk.Camera.moveToView({ ...views[val], transition: true });
+            }
+          };
+          sdkDiv.appendChild(viewSelect);
+
+          const cameraBtn = document.createElement("button");
+          cameraBtn.innerText = "📍 Fly to Kitchen View";
+          cameraBtn.className = "button1 bg-yellow c-black r-10 f-15 m-10";
+          cameraBtn.onclick = () => {
+            sdk.Camera.moveToView({
+              position: { x: 2, y: 1.5, z: -2 },
+              lookAt: { x: 2, y: 1.5, z: -1 },
+              transition: true
+            });
+          };
+          sdkDiv.appendChild(cameraBtn);
+
+          const dropdown = document.createElement("select");
+          dropdown.className = "p-10 f-15 m-10 r-10";
+          dropdown.innerHTML = `
+            <option value="">🪑 Select Furniture to Place</option>
+            <option value="sofa">Sofa</option>
+            <option value="dining">Dining Table</option>
+            <option value="bed">Bed</option>
+          `;
+          sdkDiv.appendChild(dropdown);
+
+          sdk.Mouse.hover.onHover.subscribe(info => {
+            if (info.intersect && info.intersect.position && dropdown.value) {
+              sdkDiv.style.cursor = 'pointer';
+              sdkDiv.onclick = () => {
+                const label = dropdown.value === 'sofa' ? 'Sofa'
+                            : dropdown.value === 'dining' ? 'Dining Table'
+                            : 'Bed';
+                const desc = `Placed ${label.toLowerCase()} here`;
+                sdk.Mattertag.add([{ label: label, description: desc, anchorPosition: info.intersect.position }]).then(tagIds => {
+                  const tagId = tagIds[0];
+                  const editBtn = document.createElement('button');
+                  editBtn.innerText = '✏️ Edit';
+                  editBtn.className = 'button1 bg-green c-white r-10 f-15 m-5';
+                  editBtn.onclick = () => {
+                    const newLabel = prompt('Enter new label:', label);
+                    const newDesc = prompt('Enter new description:', desc);
+                    if (newLabel && newDesc) {
+                      sdk.Mattertag.edit({ sid: tagId, label: newLabel, description: newDesc });
+                    }
+                  };
+                  const deleteBtn = document.createElement('button');
+                  deleteBtn.innerText = '🗑️ Delete';
+                  deleteBtn.className = 'button1 bg-red c-white r-10 f-15 m-5';
+                  deleteBtn.onclick = () => {
+                    sdk.Mattertag.remove([tagId]);
+                    editBtn.remove();
+                    deleteBtn.remove();
+                  };
+                  sdkDiv.appendChild(editBtn);
+                  sdkDiv.appendChild(deleteBtn);
+                  console.log("Tag placed at:", info.intersect.position);
+                });
+                dropdown.value = "";
+              }
+            } else {
+              sdkDiv.style.cursor = 'default';
+              sdkDiv.onclick = null;
+            }
+          });
+
+          const furnitureBtn = document.createElement("button");
+          furnitureBtn.innerText = "🪑 Place Sofa Tag";
+          furnitureBtn.className = "button1 bg-yellow c-black r-10 f-15 m-10";
+          furnitureBtn.onclick = () => {
+            sdk.Mattertag.add([{ 
+              label: "Sofa",
+              description: "Example sofa placed here",
+              anchorPosition: { x: 1.2, y: 1.0, z: -0.5 }
+            }]).then(tagIds => {
+              console.log("Mattertag added:", tagIds);
+            });
+          };
+          sdkDiv.appendChild(furnitureBtn);
+
+          const tableBtn = document.createElement("button");
+          tableBtn.innerText = "🍽️ Place Dining Table Tag";
+          tableBtn.className = "button1 bg-yellow c-black r-10 f-15 m-10";
+          tableBtn.onclick = () => {
+            sdk.Mattertag.add([{ 
+              label: "Dining Table",
+              description: "Dining table placed here",
+              anchorPosition: { x: -0.5, y: 1.0, z: 0.8 }
+            }]).then(tagIds => {
+              console.log("Mattertag added:", tagIds);
+            });
+          };
+          sdkDiv.appendChild(tableBtn);
+
+          const bedBtn = document.createElement("button");
+          bedBtn.innerText = "🛏️ Place Bed Tag";
+          bedBtn.className = "button1 bg-yellow c-black r-10 f-15 m-10";
+          bedBtn.onclick = () => {
+            sdk.Mattertag.add([{ 
+              label: "Bed",
+              description: "Bed placed in master bedroom",
+              anchorPosition: { x: -2.0, y: 1.0, z: -1.0 }
+            }]).then(tagIds => {
+              console.log("Mattertag added:", tagIds);
+            });
+          };
+          sdkDiv.appendChild(bedBtn);
+        })
+        .catch(err => console.error("SDK Load Error", err));
+    };
+  }
+</script>
+$1
+<body class="bg-blue c-white f-sans-serif">
+
+  <div class="t-center p-30">
+    <button id="openWizard" class="button2 bg-yellow c-black r-10 f-25">Choose House Style</button>
+  </div>
+
+  <div class="modal bg-blue o-auto p-fixed t-center w-100 h-100 z-100 d-none" id="wizardModal">
+    <div class="max-600 m-30-auto p-30 bg-white1 c-black r-20">
+
+      <!-- Step 1 -->
+      <div class="wizard-step d-none" id="step1">
+        <h2 class="f-30 fw-700 mb-20">Step 1: Choose Your House Style</h2>
+        <select id="styleSelect" class="p-10 f-20 w-100 m-20 r-10">
+          <option value="Modern">Modern</option>
+          <option value="Traditional">Traditional</option>
+          <option value="Farmhouse">Farmhouse</option>
+          <option value="Luxury">Luxury</option>
+        </select>
+        <button onclick="nextStep(2)" class="button1 bg-yellow c-black r-10 f-20 m-10">Next</button>
+      </div>
+
+      <!-- Step 2 -->
+      <div class="wizard-step d-none" id="step2">
+        <h2 class="f-30 fw-700 mb-20">Step 2: Choose Square Footage</h2>
+        <select id="sizeSelect" class="p-10 f-20 w-100 m-20 r-10">
+          <option value="<2500">Under 2500 sq ft</option>
+          <option value="2500-4000">2500 - 4000 sq ft</option>
+          <option value=">4000">4000+ sq ft</option>
+        </select>
+        <button onclick="nextStep(3)" class="button1 bg-yellow c-black r-10 f-20 m-10">Next</button>
+      </div>
+
+      <!-- Step 3 -->
+      <div class="wizard-step d-none" id="step3">
+        <h2 class="f-30 fw-700 mb-20">Step 3: Bedrooms & Bathrooms</h2>
+        <div class="m-10">
+          <label class="f-20">Bedrooms:</label>
+          <input type="number" id="bedrooms" class="p-10 f-20 w-100 m-10 r-10" min="1" max="10">
+        </div>
+        <div class="m-10">
+          <label class="f-20">Bathrooms:</label>
+          <input type="number" id="bathrooms" class="p-10 f-20 w-100 m-10 r-10" min="1" max="10">
+        </div>
+        <button onclick="nextStep(4)" class="button1 bg-yellow c-black r-10 f-20 m-10">Next</button>
+      </div>
+
+      <!-- Step 4 -->
+      <div class="wizard-step d-none" id="step4">
+        <h2 class="f-30 fw-700 mb-20">Step 4: Features</h2>
+        <label class="f-20 d-block m-10"><input type="checkbox" id="garage"> Garage</label>
+        <label class="f-20 d-block m-10"><input type="checkbox" id="pool"> Pool</label>
+        <button onclick="nextStep(5)" class="button1 bg-yellow c-black r-10 f-20 m-10">Next</button>
+      </div>
+
+      <!-- Step 5: Property Address / Survey Upload -->
+      <div class="wizard-step d-none" id="step5">
+        <h2 class="f-30 fw-700 mb-20">Step 5: Property Info</h2>
+        <div class="m-20">
+          <label class="f-20 d-block">Enter Property Address (FL):</label>
+          <input type="text" id="propertyAddress" class="p-10 f-20 w-100 m-10 r-10" placeholder="123 Main St, Orlando FL">
+          <button class="button1 bg-yellow c-black r-10 f-20 m-10" onclick="alert('📌 Address lookup functionality pending API/CORS setup')">Check Property</button>
+        </div>
+        <div class="m-20">
+          <label class="f-20 d-block">Or Upload Survey Plan:</label>
+          <input type="file" id="surveyUpload" accept=".png,.jpg,.pdf" class="p-10 m-10">
+        </div>
+        <button onclick="finishWizard()" class="button1 bg-yellow c-black r-10 f-20 m-10">Finish</button>
+      </div>
+
+      <!-- Results -->
+      $1
+        <div class="p-20">
+          <button onclick="loadMatterportWithSDK('7j4Wc1H1jzS')" class="button1 bg-yellow c-black r-10 f-15 m-10">🪑 Load Interactive Tour with SDK</button>
+        </div>
+        <div id="mp-sdk-container" class="w-100 h-100 m-10-auto r-10" style="min-height: 500px;"></div>
+        <h2 class="f-30 fw-700 mb-20">Matching House Plans</h2>
+        <div class="d-grid gap-20 gallery" id="resultsGallery"></div>
+        <button onclick="closeWizard()" class="button1 bg-yellow c-black r-10 f-20 m-20">Close</button>
+      </div>
+
+      <!-- Spinner -->
+      <div class="spinner d-none f-30" id="spinner">⏳ Loading...</div>
+    </div>
+  </div>
+
+  <script>
+    const wizardModal = document.getElementById("wizardModal");
+    const spinner = document.getElementById("spinner");
+    const steps = ["step1", "step2", "step3", "step4", "step5", "results"];
+    const models = [
+      { id: "7j4Wc1H1jzS", title: "Modern Oasis", style: "Modern", size: "2500-4000", beds: 3, baths: 2, garage: true, pool: true },
+      { id: "Xj4fsWgFR4F", title: "Traditional Comfort", style: "Traditional", size: "<2500", beds: 2, baths: 2, garage: false, pool: false },
+      { id: "2M1aJmTrGgH", title: "Luxury Estate", style: "Luxury", size: ">4000", beds: 5, baths: 4, garage: true, pool: true },
+    ];
+
+    document.getElementById("openWizard").onclick = () => {
+      wizardModal.classList.remove("d-none");
+      showStep(1);
+    };
+
+    function showStep(stepNum) {
+      steps.forEach(step => document.getElementById(step).classList.add("d-none"));
+      spinner.classList.remove("d-none");
+      setTimeout(() => {
+        spinner.classList.add("d-none");
+        document.getElementById(`step${stepNum}`).classList.remove("d-none");
+      }, 1000);
+    }
+
+    function nextStep(stepNum) {
+      showStep(stepNum);
+    }
+
+    function finishWizard() {
+      const style = document.getElementById("styleSelect").value;
+      const size = document.getElementById("sizeSelect").value;
+      const beds = parseInt(document.getElementById("bedrooms").value);
+      const baths = parseInt(document.getElementById("bathrooms").value);
+      const garage = document.getElementById("garage").checked;
+      const pool = document.getElementById("pool").checked;
+
+      // Simulated renovation detection
+      const propertyAddress = document.getElementById("propertyAddress").value.toLowerCase();
+      const isRenovation = propertyAddress.includes("existing") || Math.random() > 0.5;
+
+      const galleryEl = document.getElementById("resultsGallery");
+      galleryEl.innerHTML = isRenovation
+        ? '<div class="mode-banner renovation">🏗️ Existing house detected. Showing renovation-friendly plans.</div>'
+        : '<div class="mode-banner new-build">✅ Empty lot detected. Showing new construction options.</div>';
+
+      // Cost estimation (only for new build)$1gallery.innerHTML = "";
+
+      const matches = models.filter(model =>
+        model.style === style &&
+        model.size === size &&
+        model.beds >= beds &&
+        model.baths >= baths &&
+        (!garage || model.garage) &&
+        (!pool || model.pool)
+      );
+      matches.forEach(model => {
+        const card = document.createElement("div");
+        card.className = "bg-blue1 c-black p-20 r-15";
+        card.innerHTML = `
+          <h3 class="f-25 fw-700">${model.title}</h3>
+          <iframe src="https://my.matterport.com/show/?m=${model.id}" class="w-100 h-100 m-10-auto r-10"></iframe>
+          <p class="f-15">Style: ${model.style}</p>
+          <p class="f-15">Size: ${model.size}</p>
+          <p class="f-15">${model.beds} Beds, ${model.baths} Baths</p>
+        `;
+        galleryEl.appendChild(card);
+      });
+      showStep("results");
+    }
+
+    function closeWizard() {
+      wizardModal.classList.add("d-none");
+    }
+  </script>
+
+</body>
+</html>

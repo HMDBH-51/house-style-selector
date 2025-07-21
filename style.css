@@ -1,0 +1,14 @@
+.mode-banner {
+      font-size: 20px;
+      padding: 20px;
+      border-radius: 10px;
+      margin: 20px auto;
+    }
+    .renovation {
+      background-color: #f7b616;
+      color: black;
+    }
+    .new-build {
+      background-color: green;
+      color: white;
+    }
